@@ -102,6 +102,14 @@ class MainActivity : AppCompatActivity() {
                 super.onLoadResource(view, url)
                 Log.d("DRIVER", "resource was loaded")
             }
+            override fun onReceivedError(
+                view: WebView?,
+                errorCode: Int,
+                description: String?,
+                failingUrl: String?
+            ) {
+                view?.loadUrl("file:///android_asset/unreachable.html")
+            }
         })
         mWebview.setWebChromeClient(object : WebChromeClient() {
             override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
@@ -201,7 +209,7 @@ class MainActivity : AppCompatActivity() {
         val sharedPref = activity?.getPreferences(Context.MODE_PRIVATE)
         backend = sharedPref.getString("backend", "https://bolivia.roadsafety.tk" )
 
-        mWebview.loadUrl(getString(R.string.frontend)+"/")
+        mWebview.loadUrl(getString(R.string.frontend)+"/index.html")
 
         if (ActivityCompat.checkSelfPermission(
                 this,
@@ -249,7 +257,7 @@ class MainActivity : AppCompatActivity() {
                 val w=findViewById(R.id.webview) as WebView
                 w.clearCache(true)
                 w.loadUrl("javascript:localStorage.setItem('backend', '%s')".format(backend))
-                w.loadUrl(getString(R.string.frontend)+"/")
+                w.loadUrl(getString(R.string.frontend)+"/index.html")
                 true
             }
             R.id.take_photo->{
@@ -293,7 +301,8 @@ class MainActivity : AppCompatActivity() {
                     val sharedPref = a?.getPreferences(Context.MODE_PRIVATE)
                     with (sharedPref.edit()) {
                         putString("backend", editText.text.toString())
-                        (findViewById(R.id.webview) as WebView).loadUrl("javascript:localStorage.setItem('backend', '%s')".format(backend))
+                        (findViewById(R.id.webview) as WebView).clearCache(true)
+                        (findViewById(R.id.webview) as WebView).loadUrl("javascript:localStorage.setItem('backend', '%s');localStorage.removeItem('dataset')".format(backend))
                         apply()
                     }
                     Toast.makeText(applicationContext,
@@ -308,7 +317,7 @@ class MainActivity : AppCompatActivity() {
                 true
             }
             R.id.action_logout -> {
-                (findViewById(R.id.webview) as WebView).loadUrl(getString(R.string.frontend)+"/logout")
+                (findViewById(R.id.webview) as WebView).loadUrl("javascript:$('#list-logout-button').click();")
                 true
             }
             R.id.action_refresh->{

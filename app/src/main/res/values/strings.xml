@@ -14,8 +14,10 @@
     <string name="config">Backend</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>
+
     <string name="settings">settings</string>
-    <!--string name="frontend">https://angular.drivertool.org</string-->
     <string name="frontend">http://192.168.1.100:4200</string>
+    <!--string name="frontend">https://angular.drivertool.org</string-->
+    <!--string name="frontend">file:///android_asset/driver-angular</string-->
     <string name="refresh_data">Refresh</string>
 </resources>
