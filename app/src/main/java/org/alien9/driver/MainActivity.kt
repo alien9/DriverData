@@ -251,7 +251,7 @@ class MainActivity : AppCompatActivity() {
     @RequiresApi(Build.VERSION_CODES.N)
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         // Handle item selection
-        val myString: String="" 
+        val myString: String=""
         return when (item.itemId) {
             R.id.reload -> {
                 val w=findViewById(R.id.webview) as WebView
