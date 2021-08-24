@@ -29,14 +29,20 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
+import kotlinx.android.synthetic.main.alert_edit.*
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.IOException
 
-
+private const val FCR = 1
 class MainActivity : AppCompatActivity() {
+    private var frontend: String? = null
     private val REQUEST_IMAGE_CAPTURE=1
     private var backend: String? = null
     private var state: String? = ""
+     private var mCM: String? = null
+ private var mUM: ValueCallback<Uri>? = null
+ private var mUMA: ValueCallback<Array<Uri>>? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         WebView.setWebContentsDebuggingEnabled(true);
         super.onCreate(savedInstanceState)
@@ -46,7 +52,9 @@ class MainActivity : AppCompatActivity() {
             Manifest.permission.WRITE_EXTERNAL_STORAGE,
             Manifest.permission.CAMERA,
             Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_LOCATION_EXTRA_COMMANDS
+
         )
 
         if (!hasPermissions(this, *PERMISSIONS)) {
@@ -74,7 +82,8 @@ class MainActivity : AppCompatActivity() {
         webSettings.javaScriptCanOpenWindowsAutomatically=false
         webSettings.allowFileAccess=true
         webSettings.allowFileAccessFromFileURLs=true
-        webSettings.setCacheMode( WebSettings.LOAD_CACHE_ELSE_NETWORK)
+        webSettings.cacheMode=WebSettings.LOAD_CACHE_ELSE_NETWORK
+        webSettings.setGeolocationEnabled(true)
         mWebview.addJavascriptInterface(JsWebInterface(this, mWebview), "androidApp")
         val context=this
         mWebview.setWebViewClient(object: WebViewClient(){
@@ -97,7 +106,6 @@ class MainActivity : AppCompatActivity() {
                 mWebview.loadUrl("javascript:localStorage.setItem('latitude', "+location?.latitude+");localStorage.setItem('longitude', "+location?.longitude+");")
 
             }
-
             override fun onLoadResource(view: WebView?, url: String?) {
                 super.onLoadResource(view, url)
                 Log.d("DRIVER", "resource was loaded")
@@ -112,6 +120,50 @@ class MainActivity : AppCompatActivity() {
             }
         })
         mWebview.setWebChromeClient(object : WebChromeClient() {
+            override fun onShowFileChooser(
+                webView: WebView,
+                filePathCallback: ValueCallback<Array<Uri>>,
+                fileChooserParams: FileChooserParams
+            ): Boolean {
+                if (mUMA != null) {
+                    mUMA!!.onReceiveValue(null)
+                }
+                mUMA = filePathCallback
+                var takePictureIntent: Intent? = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+                if (takePictureIntent!!.resolveActivity(this@MainActivity.getPackageManager()) != null) {
+                    var photoFile: File? = null
+                    try {
+                        //photoFile = createImageFile()
+                        takePictureIntent.putExtra("PhotoPath", mCM)
+                    } catch (ex: IOException) {
+                        Log.e("Webview", "Image file creation failed", ex)
+                    }
+                    if (photoFile != null) {
+                        mCM = "file:" + photoFile.getAbsolutePath()
+                        takePictureIntent.putExtra(
+                            MediaStore.EXTRA_OUTPUT,
+                            Uri.fromFile(photoFile)
+                        )
+                    } else {
+                        takePictureIntent = null
+                    }
+                }
+                val contentSelectionIntent = Intent(Intent.ACTION_GET_CONTENT)
+                contentSelectionIntent.addCategory(Intent.CATEGORY_OPENABLE)
+                contentSelectionIntent.type = "*/*"
+                val intentArray: Array<Intent>
+                intentArray = takePictureIntent?.let { arrayOf(it) } ?: arrayOf<Intent>()
+                val chooserIntent = Intent(Intent.ACTION_CHOOSER)
+                chooserIntent.putExtra(Intent.EXTRA_INTENT, contentSelectionIntent)
+                chooserIntent.putExtra(Intent.EXTRA_TITLE, "Image Chooser")
+                chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, intentArray)
+                startActivityForResult(chooserIntent, FCR)
+                return true
+            }
+            override fun onGeolocationPermissionsShowPrompt(origin: String, callback: GeolocationPermissions.Callback){
+                callback.invoke(origin, true, false)
+            }
+
             override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
                 Log.d(
                     "DRIVER-CONSOLE", consoleMessage.message() + " -- From line "
@@ -205,11 +257,14 @@ class MainActivity : AppCompatActivity() {
             }
 
         })
+
+
         val activity=this@MainActivity
         val sharedPref = activity?.getPreferences(Context.MODE_PRIVATE)
-        backend = sharedPref.getString("backend", "https://bolivia.roadsafety.tk" )
+        backend = sharedPref.getString("backend", getString(R.string.backend) )
+        frontend = sharedPref.getString("frontend", getString(R.string.frontend) )
 
-        mWebview.loadUrl(getString(R.string.frontend)+"/index.html")
+        mWebview.loadUrl("${frontend}/index.html")
 
         if (ActivityCompat.checkSelfPermission(
                 this,
@@ -257,7 +312,12 @@ class MainActivity : AppCompatActivity() {
                 val w=findViewById(R.id.webview) as WebView
                 w.clearCache(true)
                 w.loadUrl("javascript:localStorage.setItem('backend', '%s')".format(backend))
-                w.loadUrl(getString(R.string.frontend)+"/index.html")
+val a=this@MainActivity
+                val sharedPref = a?.getPreferences(Context.MODE_PRIVATE)
+                backend = sharedPref.getString("backend", getString(R.string.backend))
+                frontend = sharedPref.getString("frontend",  getString(R.string.frontend))
+
+                w.loadUrl("${frontend}/index.html")
                 true
             }
             R.id.take_photo->{
@@ -293,18 +353,22 @@ class MainActivity : AppCompatActivity() {
                 builder.setMessage("host")
                 val dialogLayout = inflater.inflate(R.layout.alert_edit, null)
                 val editText  = dialogLayout.findViewById<EditText>(R.id.editText)
+                val frontendText  = dialogLayout.findViewById<EditText>(R.id.frontendText)
                 val sharedPref = a?.getPreferences(Context.MODE_PRIVATE)
-                backend = sharedPref.getString("backend", "https://bolivia.roadsafety.tk.org" )
+                backend = sharedPref.getString("backend", "")
+                frontend = sharedPref.getString("frontend", "")
                 editText.setText(backend)
+                frontendText.setText(frontend)
                 builder.setView(dialogLayout)
                 builder.setPositiveButton(android.R.string.ok) { dialog, which ->
                     val sharedPref = a?.getPreferences(Context.MODE_PRIVATE)
                     with (sharedPref.edit()) {
                         putString("backend", editText.text.toString())
-                        (findViewById(R.id.webview) as WebView).clearCache(true)
-                        (findViewById(R.id.webview) as WebView).loadUrl("javascript:localStorage.setItem('backend', '%s');localStorage.removeItem('dataset')".format(backend))
+                        putString("frontend", frontendText.text.toString())
                         apply()
                     }
+                    (findViewById(R.id.webview) as WebView).clearCache(true)
+                    (findViewById(R.id.webview) as WebView).loadUrl("javascript:localStorage.setItem('backend', '%s');localStorage.removeItem('dataset')".format(backend))
                     Toast.makeText(applicationContext,
                         android.R.string.ok, Toast.LENGTH_SHORT).show()
                 }
