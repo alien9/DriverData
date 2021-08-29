@@ -8,8 +8,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.location.Location
 import android.location.LocationManager
+import android.media.ThumbnailUtils
+import android.media.ThumbnailUtils.createImageThumbnail
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -18,6 +21,7 @@ import android.os.Message
 import android.provider.MediaStore
 import android.util.Base64
 import android.util.Log
+import android.util.Size
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
@@ -29,13 +33,17 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
-import kotlinx.android.synthetic.main.alert_edit.*
+import androidx.core.content.FileProvider
+import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
 
 private const val FCR = 1
 class MainActivity : AppCompatActivity() {
+    private lateinit var photoURI: Uri
+    private var media_uri: Uri?=null
+    private var basepath: File? = null
     private var frontend: String? = null
     private val REQUEST_IMAGE_CAPTURE=1
     private var backend: String? = null
@@ -47,6 +55,7 @@ class MainActivity : AppCompatActivity() {
         WebView.setWebContentsDebuggingEnabled(true);
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        basepath=this.getExternalFilesDir(null)
         val PERMISSION_ALL = 1
         val PERMISSIONS = arrayOf(
             Manifest.permission.WRITE_EXTERNAL_STORAGE,
@@ -120,45 +129,30 @@ class MainActivity : AppCompatActivity() {
             }
         })
         mWebview.setWebChromeClient(object : WebChromeClient() {
-            override fun onShowFileChooser(
-                webView: WebView,
-                filePathCallback: ValueCallback<Array<Uri>>,
-                fileChooserParams: FileChooserParams
-            ): Boolean {
-                if (mUMA != null) {
-                    mUMA!!.onReceiveValue(null)
-                }
-                mUMA = filePathCallback
-                var takePictureIntent: Intent? = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-                if (takePictureIntent!!.resolveActivity(this@MainActivity.getPackageManager()) != null) {
-                    var photoFile: File? = null
-                    try {
-                        //photoFile = createImageFile()
-                        takePictureIntent.putExtra("PhotoPath", mCM)
+            override fun onShowFileChooser(webView:WebView, filePathCallback:ValueCallback<Array<Uri>>, fileChooserParams:FileChooserParams):Boolean {
+                Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
+                // Ensure that there's a camera activity to handle the intent
+                takePictureIntent?.resolveActivity(packageManager)?.also {
+                        }        // Create the File where the photo should go
+                    val photoFile: File? = try {
+                        createImageFile()
                     } catch (ex: IOException) {
-                        Log.e("Webview", "Image file creation failed", ex)
+                        // Error occurred while creating the File
+                        null
                     }
-                    if (photoFile != null) {
-                        mCM = "file:" + photoFile.getAbsolutePath()
-                        takePictureIntent.putExtra(
-                            MediaStore.EXTRA_OUTPUT,
-                            Uri.fromFile(photoFile)
+                    // Continue only if the File was successfully created
+                    photoFile?.also {
+                        this@MainActivity.photoURI = FileProvider.getUriForFile(
+                            webView.context,
+                            "org.alien9.driver.fileprovider",
+                            it
                         )
-                    } else {
-                        takePictureIntent = null
+                        takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
+                        startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
                     }
                 }
-                val contentSelectionIntent = Intent(Intent.ACTION_GET_CONTENT)
-                contentSelectionIntent.addCategory(Intent.CATEGORY_OPENABLE)
-                contentSelectionIntent.type = "*/*"
-                val intentArray: Array<Intent>
-                intentArray = takePictureIntent?.let { arrayOf(it) } ?: arrayOf<Intent>()
-                val chooserIntent = Intent(Intent.ACTION_CHOOSER)
-                chooserIntent.putExtra(Intent.EXTRA_INTENT, contentSelectionIntent)
-                chooserIntent.putExtra(Intent.EXTRA_TITLE, "Image Chooser")
-                chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, intentArray)
-                startActivityForResult(chooserIntent, FCR)
-                return true
+                return super.onShowFileChooser(webView, filePathCallback, fileChooserParams);
+
             }
             override fun onGeolocationPermissionsShowPrompt(origin: String, callback: GeolocationPermissions.Callback){
                 callback.invoke(origin, true, false)
@@ -213,49 +207,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // For Android 3.0+
-            fun openFileChooser(uploadMsg: ValueCallback<Uri?>) {
-                mUploadMessage = uploadMsg as ValueCallback<Uri>
-                val i = Intent(Intent.ACTION_GET_CONTENT)
-                i.addCategory(Intent.CATEGORY_OPENABLE)
-                i.type = "image/*"
-                this@MainActivity.startActivityForResult(
-                    Intent.createChooser(i, "File Chooser"),
-                    Companion.FILECHOOSER_RESULTCODE
-                )
-            }
-
-            // For Android 3.0+
-            fun openFileChooser(
-                uploadMsg: ValueCallback<*>,
-                acceptType: String?
-            ) {
-                mUploadMessage = uploadMsg as ValueCallback<Uri>
-                val i = Intent(Intent.ACTION_GET_CONTENT)
-                i.addCategory(Intent.CATEGORY_OPENABLE)
-                i.type = "*/*"
-                this@MainActivity.startActivityForResult(
-                    Intent.createChooser(i, "File Browser"),
-                    Companion.FILECHOOSER_RESULTCODE
-                )
-            }
-
-            //For Android 4.1
-            fun openFileChooser(
-                uploadMsg: ValueCallback<Uri?>,
-                acceptType: String?,
-                capture: String?
-            ) {
-                mUploadMessage = uploadMsg as ValueCallback<Uri>
-                val i = Intent(Intent.ACTION_GET_CONTENT)
-                i.addCategory(Intent.CATEGORY_OPENABLE)
-                i.type = "image/*"
-                this@MainActivity.startActivityForResult(
-                    Intent.createChooser(i, "File Chooser"),
-                    MainActivity.FILECHOOSER_RESULTCODE
-                )
-            }
-
         })
 
 
@@ -277,21 +228,44 @@ class MainActivity : AppCompatActivity() {
             return
         }
     }
+    lateinit var currentPhotoPath: String
+    @Throws(IOException::class)
+    private fun createImageFile(): File {
+        // Create an image file name
+        val filename=java.lang.Long.toHexString(System.currentTimeMillis())
+        val storageDir: File? = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+        return File.createTempFile(
+            "JPEG_${filename}_", /* prefix */
+            ".jpg", /* suffix */
+            storageDir /* directory */
+        ).apply {
+            // Save a file: path for use with ACTION_VIEW intents
+            currentPhotoPath = absolutePath
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            val imageBitmap = data?.extras?.get("data") as Bitmap
-             val baos: ByteArrayOutputStream = ByteArrayOutputStream();
-            imageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos)
-            val b = baos.toByteArray();
-            val encodedImage: String = Base64.encodeToString(b, Base64.DEFAULT);
-            findViewById<WebView>(R.id.webview).loadUrl("javascript:goto('image', '%s')".format(encodedImage))
+            val ThumbImage: Bitmap = createImageThumbnail(
+                File(currentPhotoPath),
+                Size(100,100), null
+            )
+            var bas=ByteArrayOutputStream()
+            ThumbImage.compress(Bitmap.CompressFormat.JPEG, 100, bas)
+            var byteArray = bas.toByteArray();
+            var ext=Base64.encodeToString(byteArray, Base64.DEFAULT);
+            var j= JSONObject()
+            j.put("src", ext)
+var u="javascript:var j=${j};(document.getElementById('file-name')).setAttribute('value', '${currentPhotoPath}');var t=document.getElementById('image-loader');t.setAttribute('value', j.src);var event = new Event('change');t.dispatchEvent(event);"
+            findViewById<WebView>(R.id.webview).loadUrl(u)
         }
     }
 
     override fun onPrepareOptionsMenu(menu: Menu?): Boolean {
         menu?.findItem(R.id.action_refresh)?.isVisible=state=="list"
-        menu?.findItem(R.id.take_photo)?.isVisible=state=="input"
+        menu?.findItem(R.id.take_photo)?.isVisible=true
         menu?.findItem(R.id.action_map)?.isVisible=state=="input"
         menu?.findItem(R.id.action_logout)?.isVisible=true
         menu?.findItem(R.id.upload)?.isVisible=state=="list"
@@ -323,26 +297,29 @@ val a=this@MainActivity
             R.id.take_photo->{
                 val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
 
-                val directoryPath: String = this.getExternalFilesDir(null)
-                    .toString() + "/images/"
-                val filePath =
-                    directoryPath + java.lang.Long.toHexString(System.currentTimeMillis()) + ".jpg"
-                val directory = File(directoryPath)
-                if (!directory.exists()) {
-                    directory.mkdirs()
+                takePictureIntent?.resolveActivity(packageManager)?.also {
+                }        // Create the File where the photo should go
+                val photoFile: File? = try {
+                    createImageFile()
+                } catch (ex: IOException) {
+                    // Error occurred while creating the File
+                    null
                 }
-                //this.capturePath =
-                //    filePath // you will process the image from this path if the capture goes well
-
-                val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-                intent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(File(filePath)))
-
-
-                try {
+                // Continue only if the File was successfully created
+                photoFile?.also {
+                    this@MainActivity.photoURI = FileProvider.getUriForFile(
+                        this,
+                        "org.alien9.driver.fileprovider",
+                        it
+                    )
+                    takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
                     startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
-                } catch (e: ActivityNotFoundException) {
-                    // display error state to the user
                 }
+
+
+
+
+
                 true
             }
             R.id.action_settings -> {
@@ -355,8 +332,8 @@ val a=this@MainActivity
                 val editText  = dialogLayout.findViewById<EditText>(R.id.editText)
                 val frontendText  = dialogLayout.findViewById<EditText>(R.id.frontendText)
                 val sharedPref = a?.getPreferences(Context.MODE_PRIVATE)
-                backend = sharedPref.getString("backend", "")
-                frontend = sharedPref.getString("frontend", "")
+                backend = sharedPref.getString("backend", getString(R.string.backend))
+                frontend = sharedPref.getString("frontend", getString(R.string.frontend))
                 editText.setText(backend)
                 frontendText.setText(frontend)
                 builder.setView(dialogLayout)
