@@ -248,22 +248,29 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            val ThumbImage: Bitmap = createImageThumbnail(
+            val thumbImage: Bitmap = createImageThumbnail(
                 File(currentPhotoPath),
-                Size(100,100), null
+                Size(256,256), null
             )
             var bas=ByteArrayOutputStream()
-            ThumbImage.compress(Bitmap.CompressFormat.JPEG, 100, bas)
+            thumbImage.compress(Bitmap.CompressFormat.JPEG, 100, bas)
             var byteArray = bas.toByteArray();
             var ext=Base64.encodeToString(byteArray, Base64.DEFAULT);
             var j= JSONObject()
             j.put("src", ext)
-var u="javascript:var j=${j};(document.getElementById('file-name')).setAttribute('value', '${currentPhotoPath}');var t=document.getElementById('image-loader');t.setAttribute('value', j.src);var event = new Event('change');t.dispatchEvent(event);"
+            var u="javascript:(document.getElementById('file-name')).setAttribute('value', '${currentPhotoPath}');"
+            findViewById<WebView>(R.id.webview).loadUrl(u)
+            u="javascript:var t=document.getElementById('image-loader');t.setAttribute('value', '${ext}');var event = new Event('change');t.dispatchEvent(event);"
             findViewById<WebView>(R.id.webview).loadUrl(u)
         }
     }
 
     override fun onPrepareOptionsMenu(menu: Menu?): Boolean {
+        val w=findViewById(R.id.webview) as WebView
+
+        w.evaluateJavascript("(function(){return $('#image-loader').length})();") { value ->
+            menu?.findItem(R.id.take_photo)?.isVisible=value=="1"
+        }
         menu?.findItem(R.id.action_refresh)?.isVisible=state=="list"
         menu?.findItem(R.id.take_photo)?.isVisible=true
         menu?.findItem(R.id.action_map)?.isVisible=state=="input"
@@ -346,13 +353,10 @@ val a=this@MainActivity
                     }
                     (findViewById(R.id.webview) as WebView).clearCache(true)
                     (findViewById(R.id.webview) as WebView).loadUrl("javascript:localStorage.setItem('backend', '%s');localStorage.removeItem('dataset')".format(backend))
-                    Toast.makeText(applicationContext,
-                        android.R.string.ok, Toast.LENGTH_SHORT).show()
                 }
 
                 builder.setNegativeButton(android.R.string.cancel) { dialog, which ->
-                    Toast.makeText(applicationContext,
-                        android.R.string.cancel, Toast.LENGTH_SHORT).show()
+
                 }
                 builder.show()
                 true
