@@ -267,15 +267,13 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPrepareOptionsMenu(menu: Menu?): Boolean {
         val w=findViewById(R.id.webview) as WebView
-
-        w.evaluateJavascript("(function(){return $('#image-loader').length})();") { value ->
-            menu?.findItem(R.id.take_photo)?.isVisible=value=="1"
+        w.evaluateJavascript("(function(){return $('#state').val()})();") { state ->
+            menu?.findItem(R.id.take_photo)?.isVisible = state == "input"
+            menu?.findItem(R.id.action_refresh)?.isVisible = state == "list"
+            menu?.findItem(R.id.action_map)?.isVisible = state == "input"
+            menu?.findItem(R.id.action_logout)?.isVisible = true
+            menu?.findItem(R.id.upload)?.isVisible = state == "list"
         }
-        menu?.findItem(R.id.action_refresh)?.isVisible=state=="list"
-        menu?.findItem(R.id.take_photo)?.isVisible=true
-        menu?.findItem(R.id.action_map)?.isVisible=state=="input"
-        menu?.findItem(R.id.action_logout)?.isVisible=true
-        menu?.findItem(R.id.upload)?.isVisible=state=="list"
         return super.onPrepareOptionsMenu(menu)
     }
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
