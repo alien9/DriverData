@@ -1,0 +1,20 @@
+<div>
+  <form autocomplete="off" [formGroup]="filterForm" (ngSubmit)="onSubmit()">
+    <mat-form-field appearance="fill">
+      <mat-label>Enter a date range</mat-label>      
+      <mat-date-range-input [rangePicker]="range">      
+        <input matStartDate placeholder="Start date" (dateChange)="setChanged()" formControlName="occurred_min">      
+        <input matEndDate placeholder="End date"  (dateChange)="setChanged()" formControlName="occurred_max">      
+      </mat-date-range-input>      
+      <mat-datepicker-toggle matSuffix [for]="range"></mat-datepicker-toggle>      
+      <mat-date-range-picker #range></mat-date-range-picker>      
+    </mat-form-field>  
+    <mat-form-field appearance="fill">
+      <mat-label>Weather</mat-label>
+      <mat-select (selectionChange)="setChanged()" multiple  formControlName="weather">
+        <mat-option *ngFor="let topping of weather_options" [value]="topping">{{topping}}</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <button mat-stroked-button *ngIf="isChanged()" type="submit">OK</button>
+  </form>
+</div>

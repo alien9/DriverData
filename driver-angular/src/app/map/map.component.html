@@ -1,0 +1,9 @@
+<div #map
+     leaflet 
+     [leafletLayersControl]="layersControl"
+     [leafletOptions]="options"
+     [leafletLayersControlOptions]="controlOptions"
+     [leafletLayers]="layers"
+     (window:resize)="onResize($event)"
+     >
+</div>

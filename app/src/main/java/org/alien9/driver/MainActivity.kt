@@ -3,15 +3,14 @@ package org.alien9.driver
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlertDialog
-import android.content.ActivityNotFoundException
+import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.location.Location
 import android.location.LocationManager
-import android.media.ThumbnailUtils
 import android.media.ThumbnailUtils.createImageThumbnail
 import android.net.Uri
 import android.os.Build
@@ -22,25 +21,35 @@ import android.provider.MediaStore
 import android.util.Base64
 import android.util.Log
 import android.util.Size
-import android.view.Menu
-import android.view.MenuInflater
-import android.view.MenuItem
+import android.view.*
 import android.webkit.*
-import android.webkit.WebView.WebViewTransport
-import android.widget.EditText
-import android.widget.Toast
+import android.webkit.WebView.*
+import android.widget.*
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
 import androidx.core.content.FileProvider
+import androidx.webkit.WebViewAssetLoader
+import com.android.volley.Request
+import com.android.volley.Response
+import com.android.volley.Response.Listener
+import com.google.android.gms.location.LocationServices
+import org.json.JSONArray
 import org.json.JSONObject
+import org.osmdroid.views.MapView
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
+import android.widget.AdapterView.OnItemSelectedListener as OnItemSelectedListener1
 
 private const val FCR = 1
 class MainActivity : AppCompatActivity() {
+    private var locator: String?="Fused"
+    private var POSITION: Int=333
+    private lateinit var dataset: JSONArray
+    private var currentRecordIndex: Int = 0
+    private lateinit var token: String
     private lateinit var photoURI: Uri
     private var media_uri: Uri?=null
     private var basepath: File? = null
@@ -48,11 +57,11 @@ class MainActivity : AppCompatActivity() {
     private val REQUEST_IMAGE_CAPTURE=1
     private var backend: String? = null
     private var state: String? = ""
-     private var mCM: String? = null
- private var mUM: ValueCallback<Uri>? = null
- private var mUMA: ValueCallback<Array<Uri>>? = null
+    private var mCM: String? = null
+    private var mUM: ValueCallback<Uri>? = null
+    private var mUMA: ValueCallback<Array<Uri>>? = null
     override fun onCreate(savedInstanceState: Bundle?) {
-        WebView.setWebContentsDebuggingEnabled(true);
+        WebView.setWebContentsDebuggingEnabled(true)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         basepath=this.getExternalFilesDir(null)
@@ -71,8 +80,8 @@ class MainActivity : AppCompatActivity() {
         }
 
 
-        var mUploadMessage: ValueCallback<Uri>;
-        Companion.FILECHOOSER_RESULTCODE = 1;
+        var mUploadMessage: ValueCallback<Uri>
+        Companion.FILECHOOSER_RESULTCODE = 1
 
         var loadingFinished = true
         var redirect = false
@@ -90,50 +99,26 @@ class MainActivity : AppCompatActivity() {
         webSettings.setSupportMultipleWindows(true)
         webSettings.javaScriptCanOpenWindowsAutomatically=false
         webSettings.allowFileAccess=true
-        webSettings.allowFileAccessFromFileURLs=true
-        webSettings.cacheMode=WebSettings.LOAD_CACHE_ELSE_NETWORK
+        webSettings.loadWithOverviewMode=true
+        //webSettings.cacheMode=WebSettings.LOAD_CACHE_ELSE_NETWORK
         webSettings.setGeolocationEnabled(true)
         mWebview.addJavascriptInterface(JsWebInterface(this, mWebview), "androidApp")
         val context=this
-        mWebview.setWebViewClient(object: WebViewClient(){
-            override fun onPageFinished(view: WebView, url: String) {
-                Log.d("DRIVER", "page was loaded")
-                mWebview.loadUrl("javascript:localStorage.setItem('backend', '%s')".format(backend))
-                var locationManager: LocationManager = applicationContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-                if (ActivityCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.ACCESS_FINE_LOCATION
-                    ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.ACCESS_COARSE_LOCATION
-                    ) != PackageManager.PERMISSION_GRANTED
-                ) {
-                    return
-                }
-                val location: Location? =
-                    locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-                mWebview.loadUrl("javascript:localStorage.setItem('latitude', "+location?.latitude+");localStorage.setItem('longitude', "+location?.longitude+");")
+        val assetLoader=WebViewAssetLoader.Builder()
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .addPathHandler("/driver-angular/", WebViewAssetLoader.AssetsPathHandler(this))
+            .addPathHandler("/res/", WebViewAssetLoader.ResourcesPathHandler(this))
+            .build()
+        var sharedPref: SharedPreferences = this.getPreferences(Context.MODE_PRIVATE)
+        val b = sharedPref.getString("backend", getString(R.string.backend) ).toString()
+        mWebview.webViewClient = LocalContentWebClient(assetLoader, b)
 
-            }
-            override fun onLoadResource(view: WebView?, url: String?) {
-                super.onLoadResource(view, url)
-                Log.d("DRIVER", "resource was loaded")
-            }
-            override fun onReceivedError(
-                view: WebView?,
-                errorCode: Int,
-                description: String?,
-                failingUrl: String?
-            ) {
-                view?.loadUrl("file:///android_asset/unreachable.html")
-            }
-        })
-        mWebview.setWebChromeClient(object : WebChromeClient() {
+        mWebview.webChromeClient = object : WebChromeClient() {
             override fun onShowFileChooser(webView:WebView, filePathCallback:ValueCallback<Array<Uri>>, fileChooserParams:FileChooserParams):Boolean {
                 Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
-                // Ensure that there's a camera activity to handle the intent
-                takePictureIntent?.resolveActivity(packageManager)?.also {
-                        }        // Create the File where the photo should go
+                    // Ensure that there's a camera activity to handle the intent
+                    takePictureIntent.resolveActivity(packageManager)?.also {
+                    }        // Create the File where the photo should go
                     val photoFile: File? = try {
                         createImageFile()
                     } catch (ex: IOException) {
@@ -151,9 +136,10 @@ class MainActivity : AppCompatActivity() {
                         startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
                     }
                 }
-                return super.onShowFileChooser(webView, filePathCallback, fileChooserParams);
+                return super.onShowFileChooser(webView, filePathCallback, fileChooserParams)
 
             }
+
             override fun onGeolocationPermissionsShowPrompt(origin: String, callback: GeolocationPermissions.Callback){
                 callback.invoke(origin, true, false)
             }
@@ -166,10 +152,12 @@ class MainActivity : AppCompatActivity() {
                 )
                 return super.onConsoleMessage(consoleMessage)
             }
+
             fun onPageFinished(view: WebView?, url: String?) {
                 Log.d("DRIVER", "page was loaded")
 
             }
+
             override fun onCreateWindow(
                 view: WebView, isDialog: Boolean,
                 isUserGesture: Boolean, resultMsg: Message
@@ -192,6 +180,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 return true
             }
+
             @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
             override fun onPermissionRequest(request: PermissionRequest) {
                 Log.d("DRIVER", "onPermissionRequest")
@@ -207,11 +196,11 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-        })
+        }
 
 
         val activity=this@MainActivity
-        val sharedPref = activity?.getPreferences(Context.MODE_PRIVATE)
+        sharedPref = activity.getPreferences(Context.MODE_PRIVATE)
         backend = sharedPref.getString("backend", getString(R.string.backend) )
         frontend = sharedPref.getString("frontend", getString(R.string.frontend) )
 
@@ -254,8 +243,8 @@ class MainActivity : AppCompatActivity() {
             )
             var bas=ByteArrayOutputStream()
             thumbImage.compress(Bitmap.CompressFormat.JPEG, 100, bas)
-            var byteArray = bas.toByteArray();
-            var ext=Base64.encodeToString(byteArray, Base64.DEFAULT);
+            var byteArray = bas.toByteArray()
+            var ext=Base64.encodeToString(byteArray, Base64.DEFAULT)
             var j= JSONObject()
             j.put("src", ext)
             var u="javascript:(document.getElementById('file-name')).setAttribute('value', '${currentPhotoPath}');"
@@ -266,16 +255,35 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onPrepareOptionsMenu(menu: Menu?): Boolean {
-        val w=findViewById(R.id.webview) as WebView
-        w.evaluateJavascript("(function(){return $('#state').val()})();") { state ->
-            menu?.findItem(R.id.take_photo)?.isVisible = state == "input"
-            menu?.findItem(R.id.action_refresh)?.isVisible = state == "list"
-            menu?.findItem(R.id.action_map)?.isVisible = state == "input"
+        val w= findViewById<WebView>(R.id.webview)
+        w.evaluateJavascript("(function(){return $('#state').val()})();") { s ->
+            val state=s.replace("\"", "")
+            menu?.findItem(R.id.take_photo)?.isVisible = false //state == "input"
+            menu?.findItem(R.id.action_refresh)?.isVisible = false
+            menu?.findItem(R.id.reload)?.isVisible = false
+            menu?.findItem(R.id.action_map)?.isVisible = state == "input" || state == "locate"
             menu?.findItem(R.id.action_logout)?.isVisible = true
             menu?.findItem(R.id.upload)?.isVisible = state == "list"
+            menu?.findItem(R.id.action_logout)?.isVisible = state != "login"
+
         }
         return super.onPrepareOptionsMenu(menu)
     }
+
+    fun place(it: Location?){
+        findViewById<WebView>(R.id.webview).evaluateJavascript(
+            """   
+(function(){
+$('input[name=position]').val('${it?.latitude},${it?.longitude}');
+$('input[name=position]').click();
+})();
+"""
+        ) {
+        }
+    }
+
+
+
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         val inflater: MenuInflater = menuInflater
         inflater.inflate(R.menu.main_context_menu, menu)
@@ -288,21 +296,20 @@ class MainActivity : AppCompatActivity() {
         val myString: String=""
         return when (item.itemId) {
             R.id.reload -> {
-                val w=findViewById(R.id.webview) as WebView
+                val w= findViewById<WebView>(R.id.webview)
                 w.clearCache(true)
                 w.loadUrl("javascript:localStorage.setItem('backend', '%s')".format(backend))
-val a=this@MainActivity
-                val sharedPref = a?.getPreferences(Context.MODE_PRIVATE)
+                val a=this@MainActivity
+                val sharedPref = a.getPreferences(Context.MODE_PRIVATE)
                 backend = sharedPref.getString("backend", getString(R.string.backend))
                 frontend = sharedPref.getString("frontend",  getString(R.string.frontend))
-
                 w.loadUrl("${frontend}/index.html")
                 true
             }
             R.id.take_photo->{
                 val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
 
-                takePictureIntent?.resolveActivity(packageManager)?.also {
+                takePictureIntent.resolveActivity(packageManager)?.also {
                 }        // Create the File where the photo should go
                 val photoFile: File? = try {
                     createImageFile()
@@ -320,37 +327,53 @@ val a=this@MainActivity
                     takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
                     startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
                 }
-
-
-
-
-
                 true
             }
             R.id.action_settings -> {
                 val builder = AlertDialog.Builder(this)
-                val a=this@MainActivity
                 val inflater = layoutInflater
-                builder.setTitle("Backend")
+                builder.setTitle("DRIVER Settings")
                 builder.setMessage("host")
                 val dialogLayout = inflater.inflate(R.layout.alert_edit, null)
-                val editText  = dialogLayout.findViewById<EditText>(R.id.editText)
-                val frontendText  = dialogLayout.findViewById<EditText>(R.id.frontendText)
-                val sharedPref = a?.getPreferences(Context.MODE_PRIVATE)
+                val editText = dialogLayout.findViewById<EditText>(R.id.editText)
+                val frontendText = dialogLayout.findViewById<EditText>(R.id.frontendText)
+                val sharedPref = this@MainActivity.getPreferences(Context.MODE_PRIVATE)
                 backend = sharedPref.getString("backend", getString(R.string.backend))
                 frontend = sharedPref.getString("frontend", getString(R.string.frontend))
+                locator=sharedPref.getString("locator", "Fused")
                 editText.setText(backend)
                 frontendText.setText(frontend)
                 builder.setView(dialogLayout)
+
+                var spinner = dialogLayout.findViewById<Spinner>(R.id.locationBackend)
+                ArrayAdapter.createFromResource(
+                    this,
+                    R.array.location_datasets,
+                    android.R.layout.simple_spinner_item
+                ).also {
+                    adapter ->
+                    adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                    spinner.adapter = adapter
+                    var vs=resources.getStringArray(R.array.location_datasets)
+                    spinner.setSelection(vs.indexOf(locator))
+                }
                 builder.setPositiveButton(android.R.string.ok) { dialog, which ->
-                    val sharedPref = a?.getPreferences(Context.MODE_PRIVATE)
+                    val sharedPref = this@MainActivity.getPreferences(Context.MODE_PRIVATE)
+                    backend=editText.text.toString()
                     with (sharedPref.edit()) {
-                        putString("backend", editText.text.toString())
+                        putString("backend", backend)
                         putString("frontend", frontendText.text.toString())
+                        putString("locator", spinner.getItemAtPosition(spinner.selectedItemPosition).toString())
                         apply()
                     }
-                    (findViewById(R.id.webview) as WebView).clearCache(true)
-                    (findViewById(R.id.webview) as WebView).loadUrl("javascript:localStorage.setItem('backend', '%s');localStorage.removeItem('dataset')".format(backend))
+                    (findViewById<WebView>(R.id.webview)).clearCache(true)
+                    (findViewById<WebView>(R.id.webview)).evaluateJavascript("""
+                        (function(){
+                        localStorage.setItem('backend', '${backend}');
+                        })();
+                    """) {
+
+                    }
                 }
 
                 builder.setNegativeButton(android.R.string.cancel) { dialog, which ->
@@ -360,30 +383,130 @@ val a=this@MainActivity
                 true
             }
             R.id.action_logout -> {
-                (findViewById(R.id.webview) as WebView).loadUrl("javascript:$('#list-logout-button').click();")
+                (findViewById<WebView>(R.id.webview)).loadUrl("javascript:localStorage.clear()")
+                (findViewById<WebView>(R.id.webview)).loadUrl("javascript:$('#list-logout-button').click();")
                 true
             }
-            R.id.action_refresh->{
-                (findViewById(R.id.webview) as WebView).loadUrl("javascript:goto('tab','refresh');")
+            R.id.cleanup->{
+                (findViewById<WebView>(R.id.webview)).evaluateJavascript("(function(){$('#cleanup-button').click()})();") { }
                 true
-
             }
             R.id.upload->{
-                (findViewById(R.id.webview) as WebView).loadUrl("javascript:goto('command','upload');")
+                (findViewById<WebView>(R.id.webview)).evaluateJavascript("(function(){return localStorage.getItem('token');})();") { s ->
+                    token=s.replace("\"", "")
+                }
+                (findViewById<WebView>(R.id.webview)).evaluateJavascript("(function(){return JSON.parse($('#dataset').val())})();") { s ->
+                    dataset = JSONArray(s)
+                    currentRecordIndex=0
+                    if(currentRecordIndex<dataset.length()){
+                        this.upload()
+                    }
+                }
                 true
             }
             R.id.action_map->{
-                var locationManager: LocationManager = applicationContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-                val location: Location? = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+                val sharedPref = this@MainActivity.getPreferences(Context.MODE_PRIVATE)
+                locator=sharedPref.getString("locator", "Fused")
+                when(locator){
+                    "Fused" -> {
+                        val fusedLocationClient = (applicationContext as Driver).fusedLocationClient
+                        fusedLocationClient.lastLocation.addOnSuccessListener {
+                            if (it != null) {
+                                place(it)
+                            } else {
+                                Toast.makeText(
+                                    this,
+                                    "Location returned was null",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
 
-                (findViewById(R.id.webview) as WebView).loadUrl("javascript:localStorage.setItem('latitude', %.7f);localStorage.setItem('longitude', %.7f);".format(location?.latitude,location?.longitude))
-                (findViewById(R.id.webview) as WebView).loadUrl("javascript:goto('tab', 'location');")
+                        }
+                        true
+                    }
+                    "GPS" -> {
+                        val loca = (applicationContext as Driver).loca as LocationManager
+                        loca.getLastKnownLocation(LocationManager.NETWORK_PROVIDER).also {
+                            if (it != null) {
+                                place(it)
+                            }
+                        }
+                    }
+                    "Network" -> {
+                        val loca = (applicationContext as Driver).loca as LocationManager
+                        loca.getLastKnownLocation(LocationManager.NETWORK_PROVIDER).also {
+                            if (it != null) {
+                                place(it)
+                            }
+                        }
+                    }
 
+                }
                 true
             }
             else -> super.onOptionsItemSelected(item)
         }
     }
+
+    private fun upload() {
+        if(currentRecordIndex>=dataset.length()) {
+            (findViewById<View>(R.id.webview)).visibility = VISIBLE
+            (findViewById<View>(R.id.progressBar)).visibility = GONE
+            return
+        }
+        val jo: JSONObject=dataset.getJSONObject(currentRecordIndex)
+        (findViewById<View>(R.id.webview)).visibility = GONE
+        (findViewById<View>(R.id.progressBar)).visibility = VISIBLE
+        val queue = Bowser.getInstance(this.applicationContext).requestQueue
+        val sharedPref = this.getPreferences(Context.MODE_PRIVATE)
+        backend = sharedPref.getString("backend", getString(R.string.backend))
+        val url = "${backend}/api/records/"
+        val listener= Listener<JSONObject> { it ->
+            dataset.getJSONObject(currentRecordIndex).put("uploaded",true)
+            currentRecordIndex++
+            if(currentRecordIndex<dataset.length()) {
+                upload()
+            }else {
+                (findViewById<View>(R.id.webview)).visibility = VISIBLE
+                (findViewById<View>(R.id.progressBar)).visibility = GONE
+            }
+            (findViewById<WebView>(R.id.webview)).evaluateJavascript("""
+                    (function(){
+                    console.log('$dataset');
+                    localStorage.setItem('dataset','$dataset');
+                    $("#dataset").click();
+                    })();
+                """){ }
+
+
+        }
+        val errorListener=Response.ErrorListener {
+            val mess=JSONObject(String(it.networkResponse.data))
+            if(mess.has("data")){
+                Toast.makeText(this, mess.getString("data"), Toast.LENGTH_LONG).show()
+            }else {
+                if(mess.has("schema")){
+                    Toast.makeText(this, mess.optJSONArray("schema").join(""), Toast.LENGTH_LONG).show()
+                }else {
+                    Toast.makeText(this, it.toString(), Toast.LENGTH_LONG).show()
+                }
+            }
+            (findViewById<View>(R.id.webview)).visibility = VISIBLE
+            (findViewById<View>(R.id.progressBar)).visibility = GONE
+        }
+        if(!jo.optBoolean("uploaded", false)) {
+            val jsonObjectRequest = DriverRequest<JSONArray>(
+                Request.Method.POST, url, jo.getJSONObject("record").toString(),
+                errorListener, listener
+            )
+            jsonObjectRequest.setToken(token)
+            queue.add(jsonObjectRequest)
+        }else{
+            currentRecordIndex++
+            upload()
+        }
+    }
+
     fun hasPermissions(context: Context, vararg permissions: String): Boolean = permissions.all {
         ActivityCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
     }
@@ -420,16 +543,15 @@ val a=this@MainActivity
                     }
                     val location: Location? = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
                     val u="javascript:localStorage.setItem('latitude', %.7f);localStorage.setItem('longitude', %.7f);".format(location?.latitude,location?.longitude)
-                    webview.loadUrl(u);
+                    webview.loadUrl(u)
 //                    webview.loadUrl("javascript:window.document.getElementById('tab').setAttribute('value', 'location');")
                 }
             }
-            webview.post(s);
+            webview.post(s)
         }
         @JavascriptInterface
         fun setState(s: String?){
             this@MainActivity.state=s
         }
     }
-
 }

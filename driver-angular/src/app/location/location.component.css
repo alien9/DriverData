@@ -1,0 +1,32 @@
+.container,
+html,
+body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.container .map {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+    top: 60px;
+}
+
+.container h2 {
+    margin: 15px
+}
+
+.save {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    z-index: 10000;
+    padding: 20px;
+}
+
+.mapper {
+    width: 6em;
+}

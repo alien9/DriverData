@@ -1,0 +1,5 @@
+<div class="header">
+    <button (click)="logout()">Logout</button>
+</div>
+<app-filterbar (updateFilter)="updateFilter($event)"></app-filterbar>
+<app-map *ngIf="isMap()" [filterUpdate]="filterSubject.asObservable()"></app-map>

@@ -1,0 +1,91 @@
+.add {
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+}
+
+.tablita {
+    position: relative;
+}
+
+.commands {
+    position: absolute;
+    right: 0;
+    top: 0;
+    margin: 15px;
+}
+
+.console {
+    position: absolute;
+    bottom: 0;
+    padding: 15px;
+    right: 0;
+    left: 0;
+    background-color: white;
+}
+
+.subcontainer {
+    height: 100%;
+    overflow-y: scroll;
+    padding-bottom: 100px;
+}
+
+.container {
+    position: relative;
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.item {
+    border: 1px solid gray;
+    /* offset-x | offset-y | color */
+    box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.2);
+    padding: 12px;
+    margin: 13px 15px;
+}
+
+.tabhead {
+    padding: 15px;
+    position: relative;
+}
+
+.subtitle {
+    font-size: 24px;
+}
+
+.numeric {
+    text-align: right;
+}
+
+.maindescriptor {
+    padding: 15px;
+}
+
+.imageframe {
+    width: 100%;
+}
+
+.imagepreview {
+    margin: 5px;
+    padding: 1px;
+    width: 20%;
+    display: inline-block;
+    box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.2);
+    position: relative;
+}
+
+.selected {
+    border: 2px solid black;
+}
+
+.selected .exclude {
+    display: block;
+}
+
+.exclude {
+    position: absolute;
+    display: none;
+    top: 0;
+    right: 0;
+}

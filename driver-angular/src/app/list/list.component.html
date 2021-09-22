@@ -1,0 +1,16 @@
+<div class="container">
+    <input id="state" type="hidden" value="list">
+    <input type=text [value]=getDataset() id=dataset (click)=loadDataset() type=hidden>
+    <ul class="list-group">
+        <li class="list-group-item" *ngFor="let item of dataset;let i = index" (click)="edit(item, i)">
+            <span [ngClass]=isUploaded(item)>{{item.record.occurred_from | date : 'mediumDate'}}</span>
+            <span *ngIf=item.error>{{item.record.error}}</span>
+            <span class=status>{{item.record.status}}</span>
+        </li>
+    </ul>
+    <div class="commands">
+        <input class="btn btn-primary" type="button" value="Add" (click)="new()"> &nbsp;
+        <input style="display:none" type="button" value="Upload" (click)="upload()" [disabled]=isUp() id=upload-button> &nbsp;
+        <input  style="display:none" id="list-cleanup-button" type="button" value="Cleanup" (click)="cleanup()"  id=cleanup-button [disabled]=isClean()>
+    </div>
+</div>

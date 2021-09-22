@@ -1,0 +1,143 @@
+<div class="container" *ngIf="pane=='inputing'">
+    <div class="subcontainer">
+        <input id="image-loader" (change)=loadImage($event) type="hidden">
+        <input id="file-name" [(ngModel)]=filename type="hidden">
+        <input id="state" type="hidden" value="input">
+        <input type=hidden id="location-loader" name=position (click)=loadLocation($event)>
+        <form>
+            <div class=maindescriptor>
+                <h2>{{title}}</h2>
+                <div class="form-group">
+                    <div class="imagepreview" *ngFor="let img of preview; let i = index" (click)=selectPreview(i) [ngClass]="(selectedPreview==i)?'selected':''">
+                        <img class=imageframe [src]="img.src">
+                        <button value=X (click)=removePreview(i) class=exclude> x </button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <mat-label>latitude</mat-label>
+                    <input matInput [(ngModel)]="latitude" name="latitude">
+                </div>
+                <div class="form-group">
+                    <mat-label>longitude</mat-label>
+                    <input matInput [(ngModel)]="longitude" name="longitude">
+                </div>
+                <div class="form-group">
+                    <button (click)="locate()" class="btn btn-primary">locate</button> &nbsp;
+                    <!--button (click)="cross()" class="btn  btn-primary">
+                        <i class="fa fa-crosshairs" aria-hidden="true"></i>
+                    </button-->
+                </div>
+                <div class="form-group">
+                    <mat-form-field>
+                        <mat-label>Choose a date</mat-label>
+                        <input matInput [matDatepicker]="picker" [value]=date (dateInput)="setDate($event)">
+                        <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+                        <mat-datepicker #picker></mat-datepicker>
+                    </mat-form-field>
+                </div>
+                <div class="form-group">
+                    <mat-label>Choose a time</mat-label>
+                    <input [ngxTimepicker]="timepicker" class="form-control" [value]=clock readonly [format]=24>
+                    <ngx-material-timepicker #timepicker (timeChanged)=setTime($event)></ngx-material-timepicker>
+                </div>
+            </div>
+            <div *ngFor="let table of tables" class="{{table}} tablita">
+                <div class=tabhead>
+                    <div class=subtitle *ngIf="!(schema['definitions'][table].multiple)">{{schema['definitions'][table].title}}</div>
+                    <div class=subtitle *ngIf="schema['definitions'][table].multiple">{{schema['definitions'][table].plural_title}}</div>
+
+                    <div class="commands">
+                        <button (click)="pop(table)" *ngIf="schema['definitions'][table].multiple && registry.data[table].length" class="btn btn-primary locate">-</button> &nbsp;
+                        <button (click)="add(table)" *ngIf="schema['definitions'][table].multiple" class="btn btn-primary add">+</button>
+                    </div>
+                </div>
+                <div class=card *ngIf="tableExists(schema['definitions'][table])">
+                    <div class="item" *ngIf="!schema['definitions'][table].multiple">
+                        <div *ngFor="let fieldname of schema['definitions'][table].properties|orderedFields">
+                            <div class="form-group" *ngIf="schema['definitions'][table].properties[fieldname].fieldType=='text'">
+                                <mat-label>{{fieldname}}</mat-label>
+                                <input name="{{table}}{{fieldname}}" class="form-control" [(ngModel)]="registry.data[table][fieldname]" name="{{table}}-{{fieldname}}" />
+                            </div>
+                            <div class="form-group" *ngIf="schema['definitions'][table].properties[fieldname].fieldType=='integer'">
+                                <mat-label>{{fieldname}}</mat-label>
+                                <input pattern="\d*" name="{{table}}{{fieldname}}" class="form-control numeric" [(ngModel)]="registry.data[table][fieldname]" name="{{table}}-{{fieldname}}" type=number />
+                            </div>
+                            <div class="form-group selectable" *ngIf="schema['definitions'][table].properties[fieldname].fieldType=='selectlist'" id="{{fieldname}}">
+                                <mat-label>{{fieldname}}</mat-label>
+                                <mat-select *ngIf="schema['definitions'][table].properties[fieldname].format!='checkbox'" [(ngModel)]="registry.data[table][fieldname]" name="{{table}}-{{fieldname}}">
+                                    <mat-option *ngFor="let item of schema['definitions'][table].properties[fieldname].enum" [value]=item>{{item}}</mat-option>
+                                </mat-select>
+                                <mat-select *ngIf="schema['definitions'][table].properties[fieldname].format=='checkbox'" multiple [(ngModel)]="registry.data[table][fieldname]" name="{{table}}-{{fieldname}}">
+                                    <mat-option *ngFor="let item of schema['definitions'][table].properties[fieldname].items.enum" [value]=item>{{item}}</mat-option>
+                                </mat-select>
+                            </div>
+                            <div class="form-group" *ngIf="schema['definitions'][table].properties[fieldname].fieldType=='image'">
+                                <mat-label>{{fieldname}}</mat-label><br>
+                                <button class="btn btn-primary" type="button" (click)="fileInput.click()">Take Photo</button>
+                                <input style="display:none" accept="image/*" name="{{table}}.{{fieldname}}" (change)="onImageLoaded($event.target.files,registry.data[table],fieldname)" #fileInput type="file" (click)=setImageCallback(registry.data[table],fieldname)>
+                                <img [src]=registry.data[table][fieldname] *ngIf=registry.data[table][fieldname] class="imagepreview">
+                            </div>
+                        </div>
+                    </div>
+                    <div *ngIf="schema['definitions'][table].multiple">
+                        <div *ngFor="let u of registry.data[table]; let i = index" class="item">
+                            <input name="_localId" type="hidden" [(ngModel)]="u._localId" />
+                            <div *ngFor="let fieldname of schema['definitions'][table].properties|orderedFields">
+                                <div class="form-group" *ngIf="schema['definitions'][table].properties[fieldname].fieldType=='text'">
+                                    <mat-label>{{fieldname}}</mat-label>
+                                    <input name="{{table}}{{i}}{{fieldname}}" class="form-control" [(ngModel)]="u[fieldname]" />
+                                </div>
+                                <div class="form-group" *ngIf="schema['definitions'][table].properties[fieldname].fieldType=='integer'">
+                                    <mat-label>{{fieldname}}</mat-label>
+                                    <input pattern="\d*" name="{{table}}{{i}}{{fieldname}}" class="form-control" [(ngModel)]="u[fieldname]" type=number />
+                                </div>
+                                <div class="form-group selectable" *ngIf="schema['definitions'][table].properties[fieldname].fieldType=='selectlist'" id="select-{{table}}-{{i}}-{{fieldname}}">
+                                    <mat-label>{{fieldname}}</mat-label>
+                                    <mat-select *ngIf="schema['definitions'][table].properties[fieldname].format!='checkbox'" [(ngModel)]="u[fieldname]" name="{{table}}-{{i}}-{{fieldname}}">
+                                        <mat-option *ngFor="let item of schema['definitions'][table].properties[fieldname].enum" [value]="item">{{item}}</mat-option>
+                                    </mat-select>
+                                    <mat-select *ngIf="schema['definitions'][table].properties[fieldname].format=='checkbox'" multiple [(ngModel)]="u[fieldname]" name="{{table}}-{{i}}-{{fieldname}}">
+                                        <mat-option *ngFor="let item of schema['definitions'][table].properties[fieldname].items.enum" [value]="item">{{item}}</mat-option>
+                                    </mat-select>
+                                </div>
+                                <div class="form-group selectable" *ngIf="schema['definitions'][table].properties[fieldname].fieldType=='reference'" id="{{fieldname}}">
+                                    <mat-label>{{fieldname}}</mat-label>
+                                    <mat-select [(ngModel)]="u[fieldname]" name="{{table}}-{{i}}-{{fieldname}}">
+                                        <mat-option *ngFor="let item of registry.data[schema['definitions'][table].properties[fieldname].watch.target]; let v=index" [value]="item._localId">{{1+v}}</mat-option>
+                                    </mat-select>
+                                </div>
+                                <div class="form-group" *ngIf="schema['definitions'][table].properties[fieldname].fieldType=='image'">
+                                    <mat-label>{{fieldname}}</mat-label><br>
+                                    <button class="btn btn-primary" type="button" (click)="fileInputMulti.click()">Take Photo</button>
+                                    <input style="display:none" accept="image/*" name="{{table}}-{{i}}-{{fieldname}}" (change)="onImageLoaded($event.target.files,u,fieldname)" #fileInputMulti type="file" (click)=setImageCallback(u,fieldname)>
+                                    <img [src]=u[fieldname] *ngIf=u[fieldname] class="imagepreview">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </form>
+        <div class="maindescriptor" *ngIf="show_photo">
+            <div class="form-group">
+                <button class="btn btn-primary" type="button" (click)="fileInput.click()">Take Photo</button>
+                <input style="display:none" id="photo-uploader" accept="image/*" (change)="onFileSelected($event.target.files)" #fileInput type="file">
+            </div>
+        </div>
+        <div class="form-group">
+            {{validationErrorMessage}}
+        </div>
+    </div>
+    <div class="console">
+        <button class="btn btn-primary" value="OK" (click)="write()" [disabled]=!isValid()>OK</button> &nbsp;
+        <button class="btn btn-primary" value="Cancel" (click)="cancel()">Cancel</button>
+    </div>
+
+</div>
+<app-location *ngIf="pane=='locating'" (locateEvent)=setLocation($event) [latitude]=latitude [longitude]=longitude>
+
+</app-location>
+<app-list *ngIf="pane=='listing'" (record)=loadRecord($event)></app-list>
+<app-login *ngIf="pane=='login'" (entering)=list()></app-login>
+<input class="btn btn-primary" id="list-logout-button" type="button" value="Logout" (click)="logout()" style="display:none">

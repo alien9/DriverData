@@ -1,0 +1,52 @@
+{
+  "name": "driver-angular",
+  "version": "1.0.0",
+  "description": "This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 10.0.2.",
+  "main": "karma.conf.js",
+  "dependencies": {
+    "@angular-devkit/build-angular": "^0.1002.0",
+    "@angular/animations": "^10.2.3",
+    "@angular/cdk": "^10.2.7",
+    "@angular/cli": "^10.2.0",
+    "@angular/common": "^10.2.3",
+    "@angular/compiler": "^10.2.3",
+    "@angular/compiler-cli": "^10.2.3",
+    "@angular/core": "^10.2.3",
+    "@angular/forms": "^10.2.3",
+    "@angular/material": "^10.2.7",
+    "@angular/platform-browser": "^10.2.3",
+    "@angular/platform-browser-dynamic": "^10.2.3",
+    "@angular/router": "^10.2.3",
+    "@asymmetrik/ngx-leaflet": "^8.1.0",
+    "@mapbox/corslite": "0.0.7",
+    "@types/leaflet.locatecontrol": "^0.60.8",
+    "@types/uuid": "^8.3.0",
+    "angular": "^1.8.2",
+    "angular-animate": "^1.8.2",
+    "angular-aria": "^1.8.2",
+    "angular-material": "^1.2.1",
+    "angular-messages": "^1.8.2",
+    "bootstrap-datepicker": "^1.9.0",
+    "bootstrap-timepicker": "^0.5.2",
+    "dts-gen": "^0.6.0",
+    "igniteui-angular": "^10.2.2",
+    "leaflet": "^1.7.1",
+    "leaflet-gps": "^1.7.7",
+    "leaflet-utfgrid": "^0.3.0",
+    "leaflet.locatecontrol": "^0.74.0",
+    "ngx-material-timepicker": "^5.5.3",
+    "rxjs": "^6.6.3",
+    "typescript": "^3.9.7",
+    "uuid": "^8.3.2",
+    "zone.js": "^0.10.3"
+  },
+  "devDependencies": {
+    "@types/jquery": "^3.5.5",
+    "@types/leaflet": "^1.5.19"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
