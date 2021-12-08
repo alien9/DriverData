@@ -41,6 +41,9 @@ import org.osmdroid.views.MapView
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.*
 import android.widget.AdapterView.OnItemSelectedListener as OnItemSelectedListener1
 
 private const val FCR = 1
@@ -60,6 +63,7 @@ class MainActivity : AppCompatActivity() {
     private var mCM: String? = null
     private var mUM: ValueCallback<Uri>? = null
     private var mUMA: ValueCallback<Array<Uri>>? = null
+    @RequiresApi(Build.VERSION_CODES.N)
     override fun onCreate(savedInstanceState: Bundle?) {
         WebView.setWebContentsDebuggingEnabled(true)
         super.onCreate(savedInstanceState)
@@ -111,8 +115,6 @@ class MainActivity : AppCompatActivity() {
             .build()
         var sharedPref: SharedPreferences = this.getPreferences(Context.MODE_PRIVATE)
         val b = sharedPref.getString("backend", getString(R.string.backend) ).toString()
-        mWebview.webViewClient = LocalContentWebClient(assetLoader, b)
-
         mWebview.webChromeClient = object : WebChromeClient() {
             override fun onShowFileChooser(webView:WebView, filePathCallback:ValueCallback<Array<Uri>>, fileChooserParams:FileChooserParams):Boolean {
                 Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
@@ -155,7 +157,6 @@ class MainActivity : AppCompatActivity() {
 
             fun onPageFinished(view: WebView?, url: String?) {
                 Log.d("DRIVER", "page was loaded")
-
             }
 
             override fun onCreateWindow(
@@ -197,13 +198,12 @@ class MainActivity : AppCompatActivity() {
             }
 
         }
-
-
+        mWebview.webViewClient = LocalContentWebClient(assetLoader, b)
+        mWebview.settings.allowUniversalAccessFromFileURLs=true
         val activity=this@MainActivity
         sharedPref = activity.getPreferences(Context.MODE_PRIVATE)
         backend = sharedPref.getString("backend", getString(R.string.backend) )
         frontend = sharedPref.getString("frontend", getString(R.string.frontend) )
-
         mWebview.loadUrl("${frontend}/index.html")
 
         if (ActivityCompat.checkSelfPermission(
@@ -385,6 +385,13 @@ $('input[name=position]').click();
             R.id.action_logout -> {
                 (findViewById<WebView>(R.id.webview)).loadUrl("javascript:localStorage.clear()")
                 (findViewById<WebView>(R.id.webview)).loadUrl("javascript:$('#list-logout-button').click();")
+                (findViewById<WebView>(R.id.webview)).evaluateJavascript("""
+                        (function(){
+                        localStorage.setItem('backend', '${backend}');
+                        })();
+                    """) {
+
+                }
                 true
             }
             R.id.cleanup->{
@@ -488,7 +495,11 @@ $('input[name=position]').click();
                 if(mess.has("schema")){
                     Toast.makeText(this, mess.optJSONArray("schema").join(""), Toast.LENGTH_LONG).show()
                 }else {
-                    Toast.makeText(this, it.toString(), Toast.LENGTH_LONG).show()
+                    if(mess.has("detail")){
+                        Toast.makeText(this, mess.optString("detail"), Toast.LENGTH_LONG).show()
+                    }else {
+                        Toast.makeText(this, it.toString(), Toast.LENGTH_LONG).show()
+                    }
                 }
             }
             (findViewById<View>(R.id.webview)).visibility = VISIBLE

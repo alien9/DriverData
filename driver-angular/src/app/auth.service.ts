@@ -26,4 +26,10 @@ export class AuthService {
     console.log(a)
     return this.http.post(a, { username: user, password: pass }, { headers: headers });
   }
+  getLanguage(lang:string){
+    let headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+    })
+    return this.http.get(`${this.getBackend()}/dictionary/${lang}/`, { headers: headers })
+  }
 }

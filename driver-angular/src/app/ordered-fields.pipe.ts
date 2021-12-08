@@ -9,7 +9,6 @@ export class OrderedFieldsPipe implements PipeTransform {
     for (let key in value) {
         console.log(key)
         if(value[key].options && value[key].options.hidden==true){
-          console.log("OPTIONS");
           console.log(value[key].options);
         }else{
           keys.push(key);

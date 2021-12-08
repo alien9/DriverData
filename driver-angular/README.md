@@ -25,3 +25,21 @@ Run `ng e2e` to execute the end-to-end tests via [Protractor](http://www.protrac
 ## Further help
 
 To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI README](https://github.com/angular/angular-cli/blob/master/README.md).
+
+## DRIVER Android Client Deployment
+
+Run `ng build --prod`
+`./deploy.sh`
+
+The app will be placed under DriverData assets for consumption by Android DriverData app.
+
+## Languages
+
+The languages are loaded from the client's native language. The fallback language is English (en).
+To add a new language, create its proper json file at `src/assets/i18n/<language_code>.json` with the lowercase code for the language. 
+
+Run 
+
+`npm run extract-translations`
+
+The dictionaries will be updated with the necessary terms for the interface. The newly added terms will have empty string as their value, and it must be properly updated.

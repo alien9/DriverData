@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">Driver Data</string>
+    <string name="resolve">Resolver</string>
+    <string name="ok">OK</string>
+    <string name="reload">Recarregar</string>
+    <string name="help">Ajuda</string>
+    <string name="action_settings">Configurações</string>
+    <string name="dialog_message">Mensagem</string>
+    <string name="dialog_title">Título</string>
+    <string name="application_name">DRIVER</string>
+    <string name="logout">Desconectar</string>
+    <string name="take_photo">Foto</string>
+    <string name="upload">Subir</string>
+    <string name="config">Back-end</string>
+    <string name="yes">Sim</string>
+    <string name="no">Não</string>
+    <string name="settings">ajustes</string>
+    <string name="refresh_data">Atualizar</string>
+    <string name="uploading">Baixar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="back">Voltar</string>
+    <string name="center">GPS</string>
+    <string name="cleanmup">Limpar</string>
+    <string-array name="location_datasets">
+        <item value="Fused">Fused</item>
+        <item value="GPS">GPS</item>
+        <item value="Rede">Red</item>
+    </string-array>
+</resources>

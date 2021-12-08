@@ -16,12 +16,12 @@
     <string name="no">No</string>
 
     <string name="settings">settings</string>
-    <!--string name="frontend">http://192.168.1.100:4200</string-->
-    <string name="frontend">file:///android_asset/driver-angular</string>
-    <!--string name="frontend">https://angular.drivertool.org/alpha</string-->
+<!--    <string name="frontend" translatable="false">http://192.168.1.101:4200</string>-->
+    <string name="frontend" translatable="false">file:///android_asset/driver-angular</string>
     <!--string name="frontend">file:///android_asset/driver-angular</string-->
     <string name="refresh_data">Refresh</string>
-    <string name="backend">https://sierra.drivertool.org</string>
+    <string name="backend" translatable="false">http://192.168.1.101:8000</string>
+    <!--string name="backend" translatable="false">https://abidjan.drivertool.org</string-->
     <string name="uploading">Uploading Data</string>
     <string name="cancel">Cancel</string>
     <string name="back">Back</string>

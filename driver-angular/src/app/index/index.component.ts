@@ -15,6 +15,7 @@ import { Router, ActivatedRoute } from '@angular/router';
 })
 export class IndexComponent {
   filterSubject: Subject<void> = new Subject<void>();
+  debug=false
   private state:string="map";
   constructor(
     private authenticationService: AuthService,
@@ -25,6 +26,7 @@ export class IndexComponent {
 }
 
   ngOnInit(): void {
+    this.debug=(!!localStorage.getItem("debug"))||false
   }
   updateFilter(data){
     this.filterSubject.next(data);

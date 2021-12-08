@@ -23,6 +23,7 @@ class Driver: Application() {
         fusedLocationClient.lastLocation.addOnSuccessListener {
             lastLocation=it
         }
+
     }
     fun getLastKnownLocation(): Location? {
         if (ActivityCompat.checkSelfPermission(

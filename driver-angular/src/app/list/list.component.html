@@ -9,8 +9,9 @@
         </li>
     </ul>
     <div class="commands">
-        <input class="btn btn-primary" type="button" value="Add" (click)="new()"> &nbsp;
-        <input style="display:none" type="button" value="Upload" (click)="upload()" [disabled]=isUp() id=upload-button> &nbsp;
-        <input  style="display:none" id="list-cleanup-button" type="button" value="Cleanup" (click)="cleanup()"  id=cleanup-button [disabled]=isClean()>
+        <input class="btn btn-primary" type="button" value="{{'Add'|translate}}" (click)="new()"> &nbsp;
+        <input *ngIf="debug" type="button" value="Upload" (click)="upload()" [disabled]=isUp() id=upload-button> &nbsp;
+        <input *ngIf="debug" type="button" value="Cleanup" (click)="cleanup()"  id=cleanup-button [disabled]=isClean()>
+        <input *ngIf="debug" type="button" value="Exit" (click)="logout()" >
     </div>
 </div>

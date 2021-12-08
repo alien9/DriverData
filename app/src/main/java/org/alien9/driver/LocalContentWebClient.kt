@@ -12,11 +12,12 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.core.app.ActivityCompat
 import androidx.webkit.WebViewAssetLoader
+import java.util.*
 
 class LocalContentWebClient : WebViewClient {
 
     constructor(a: WebViewAssetLoader, backend: String){
-        assetLoader=a
+        this.assetLoader=a
         this.backend =backend
     }
     var backend: String = ""
@@ -26,14 +27,19 @@ class LocalContentWebClient : WebViewClient {
         view: WebView?,
         request: WebResourceRequest?
     ): WebResourceResponse? {
-
-        return request?.let { assetLoader.shouldInterceptRequest(it.url) }
+        return request?.let {
+            this.assetLoader.shouldInterceptRequest(request.url)
+        }
     }
 
     override fun onPageFinished(view: WebView, url: String) {
         Log.d("DRIVER", "page was loaded")
         view.evaluateJavascript("""
             localStorage.setItem('backend', '${backend}');
+            var l=localStorage.getItem('language');
+            localStorage.setItem('language', '${Locale.getDefault().language}');
+            if(!l || l!='${Locale.getDefault().language}')
+                window.location.reload();
             """) {}
     }
 

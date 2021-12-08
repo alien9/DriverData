@@ -1,10 +1,8 @@
 import { Component, OnInit, Input, ViewChild } from '@angular/core';
-import { RecordService } from '../record.service';
-import { Router } from '@angular/router';
 import { v4 as uuid } from 'uuid';
 import { AuthService } from '../auth.service';
-import { DomSanitizer } from '@angular/platform-browser';
-import { FormControl } from '@angular/forms';
+import { first } from 'rxjs/operators';
+import { TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-input',
@@ -34,15 +32,17 @@ export class InputComponent implements OnInit {
   public preview: any[] = []
   public filename: string;
   public show_photo = false
+
+  dict: object
+  isNew = false
   selectedPreview: number;
   date: Date = new Date();
   @ViewChild('form') mainForm;
   imageCallback: any[];
-
+  debug = false
   constructor(
-    private recordService: RecordService,
-    private router: Router,
     private authenticationService: AuthService,
+    public readonly translate: TranslateService,
   ) {
     this.JSON = JSON;
     this.registry = {
@@ -52,7 +52,27 @@ export class InputComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.initDataset()
+    this.debug = (!!localStorage.getItem("debug")) || false
+    let lang = localStorage.getItem("language")
+
+    this.authenticationService.getLanguage(lang).pipe(first()).subscribe({
+      next: data => {
+        console.log(data)
+        this.dict = data
+        this.initDataset()
+        localStorage.setItem('dict', JSON.stringify(this.dict))
+      },
+      error: err => {
+        let d = localStorage.getItem('dict')
+        if (!d) {
+          localStorage.setItem('dict', '{}')
+          this.dict = {}
+        } else {
+          this.dict = JSON.parse(d)
+        }
+        this.initDataset()
+      }
+    })
   }
   loadRecordSchema() {
     let recordSchema = localStorage.getItem('record_schema');
@@ -175,12 +195,11 @@ export class InputComponent implements OnInit {
     }
   }
   loadRecord(e: any) {
-    console.log("Loading")
     if (e) {
       this.loadRecordSchema()
       this.images = e.images
       this.preview = e.preview
-      this.title = "Edit Record"
+      this.isNew = true
       this.registry = e.record
       this.index = e.index
       this.date = new Date(Date.parse(e.record['occurred_from']))
@@ -193,7 +212,7 @@ export class InputComponent implements OnInit {
         }
       }
     } else {
-      this.title = "New Record"
+      this.isNew = false
       this.initDataset()
       this.date = new Date()
       this.clock = `${this.date.getHours()}:${this.date.getMinutes()}`

@@ -1,13 +1,13 @@
 <div class="container">
     <input id="state" type="hidden" value="locate">
-    <h2>Pick Location</h2>
+    <h2>{{'Pick Location'|translate}}</h2>
     <div class=map #map leaflet (leafletMapReady)=onMapReady($event) [leafletLayersControl]="layersControl" [leafletOptions]="options" [leafletLayersControlOptions]="controlOptions" [leafletLayers]="layers" (leafletClick)=setLocation($event)>
     </div>
     <div class=save>
         <div>
             <input name=position (click)=setPosition($event) type=hidden>
-            <input class="btn btn-primary mapper" type="button" value="Set" (click)="save() " [disabled]=!position> &nbsp;
-            <input class="btn btn-primary mapper" type="button" value="Cancel" (click)="cancel() ">
+            <input class="btn btn-primary mapper" type="button" value="{{'Set'|translate}}" (click)="save() " [disabled]=!position> &nbsp;
+            <input class="btn btn-primary mapper" type="button" value="{{'Cancel'|translate}}" (click)="cancel() ">
         </div>
     </div>
 </div>
