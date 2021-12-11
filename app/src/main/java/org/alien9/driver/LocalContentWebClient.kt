@@ -28,7 +28,13 @@ class LocalContentWebClient : WebViewClient {
         request: WebResourceRequest?
     ): WebResourceResponse? {
         return request?.let {
-            this.assetLoader.shouldInterceptRequest(request.url)
+            var intercepted = this.assetLoader.shouldInterceptRequest(request.url)
+            if(request.url.toString().endsWith("js")){
+                if(intercepted!=null){
+                    intercepted.mimeType="text/javascript"
+                }
+            }
+            return intercepted
         }
     }
 

@@ -204,7 +204,8 @@ class MainActivity : AppCompatActivity() {
         sharedPref = activity.getPreferences(Context.MODE_PRIVATE)
         backend = sharedPref.getString("backend", getString(R.string.backend) )
         frontend = sharedPref.getString("frontend", getString(R.string.frontend) )
-        mWebview.loadUrl("${frontend}/index.html")
+        mWebview.loadUrl("https://appassets.androidplatform.net/assets/driver-angular/index.html")
+        //mWebview.loadUrl("${frontend}/index.html")
 
         if (ActivityCompat.checkSelfPermission(
                 this,
