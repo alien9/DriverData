@@ -12,7 +12,7 @@ export class RecordService {
   constructor(private http: HttpClient) { }
 
   getBackend():string {
-    return localStorage.getItem("backend")||environment.api
+    return (localStorage.getItem("backend")||environment.api).replace(/\/$/, '')
   }
   getRecordType(): Observable<any[]> {
     let headers = new HttpHeaders({

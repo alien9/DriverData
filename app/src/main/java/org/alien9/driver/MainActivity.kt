@@ -80,7 +80,8 @@ class MainActivity : AppCompatActivity() {
         )
 
         if (!hasPermissions(this, *PERMISSIONS)) {
-            ActivityCompat.requestPermissions(this, PERMISSIONS, PERMISSION_ALL)
+            requestPermissions(PERMISSIONS, PERMISSION_ALL)
+            Log.d("DRIVER", "PERMISSION WAS REQUESTED")
         }
 
 
@@ -204,19 +205,16 @@ class MainActivity : AppCompatActivity() {
         sharedPref = activity.getPreferences(Context.MODE_PRIVATE)
         backend = sharedPref.getString("backend", getString(R.string.backend) )
         frontend = sharedPref.getString("frontend", getString(R.string.frontend) )
-        mWebview.loadUrl("https://appassets.androidplatform.net/assets/driver-angular/index.html")
-        //mWebview.loadUrl("${frontend}/index.html")
-
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
+        if(hasPermissions(this, *PERMISSIONS)) {
+            startUp()
         }
+    }
+    private fun startUp(){
+        if (backend == "") {
+                getQRCode()
+            } else {
+            (findViewById<WebView>(R.id.webview)).loadUrl("${frontend}/index.html")
+            }
     }
     lateinit var currentPhotoPath: String
     @Throws(IOException::class)
@@ -233,10 +231,26 @@ class MainActivity : AppCompatActivity() {
             currentPhotoPath = absolutePath
         }
     }
-
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions:Array<out String>,
+        grantResults:IntArray
+    )
+    {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        startUp()
+    }
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if(requestCode==2 && data!=null){
+            val e=data.getExtras()
+            if(!(e == null || e?.containsKey("CODE") != true)){
+                saveBackend(e["CODE"] as String)
+                finish()
+                startActivity(intent)
+            }
+        }
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
             val thumbImage: Bitmap = createImageThumbnail(
                 File(currentPhotoPath),
@@ -359,8 +373,8 @@ $('input[name=position]').click();
                     spinner.setSelection(vs.indexOf(locator))
                 }
                 builder.setPositiveButton(android.R.string.ok) { dialog, which ->
-                    val sharedPref = this@MainActivity.getPreferences(Context.MODE_PRIVATE)
                     backend=editText.text.toString()
+                    val sharedPref = this@MainActivity.getPreferences(Context.MODE_PRIVATE)
                     with (sharedPref.edit()) {
                         putString("backend", backend)
                         putString("frontend", frontendText.text.toString())
@@ -381,6 +395,10 @@ $('input[name=position]').click();
 
                 }
                 builder.show()
+                true
+            }
+            R.id.action_set_backend->{
+                getQRCode()
                 true
             }
             R.id.action_logout -> {
@@ -454,6 +472,20 @@ $('input[name=position]').click();
             }
             else -> super.onOptionsItemSelected(item)
         }
+    }
+
+    private fun saveBackend(backend: String) {
+        val sharedPref = this@MainActivity.getPreferences(Context.MODE_PRIVATE)
+        with (sharedPref.edit()) {
+            putString("backend", backend)
+            apply()
+        }
+    }
+
+    private fun getQRCode() {
+
+        val intent=Intent(this, QrCodeScanner::class.java)
+        startActivityForResult(intent,2)
     }
 
     private fun upload() {

@@ -26,6 +26,10 @@
         android:title="@string/action_settings"
         app:showAsAction="never" />
     <item
+        android:id="@+id/action_set_backend"
+        android:title="@string/qr_code"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_map"
         android:title="@string/my_location"
         app:showAsAction="never" />
